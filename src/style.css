@@ -1,19 +1,19 @@
-*
-{
-    margin: 0;
-    padding: 0;
+.control-button {
+  padding: 10px 20px;
+  background-color: #333;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
 }
 
-html,
-body
-{
-    overflow: hidden;
+.control-button:hover {
+  background-color: #555;
 }
 
-.webgl
-{
-    position: fixed;
-    top: 0;
-    left: 0;
-    outline: none;
+#controls-container {
+  display: flex;
+  gap: 10px;
 }

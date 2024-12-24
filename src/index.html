@@ -8,6 +8,14 @@
 </head>
 <body>
     <canvas class="webgl"></canvas>
+    <div id="camera-info" style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px;">
+        Camera Position: <span id="camera-position"></span><br>
+        Target Position: <span id="camera-target"></span>
+    </div>
+    <div id="controls-container" style="position: absolute; bottom: 10px; left: 10px; display: flex; gap: 10px;">
+        <button id="rotate-button" class="control-button">Start Rotation</button>
+        <button id="animation-button" class="control-button">Stop Animation</button>
+    </div>
     <script type="module" src="./main.js"></script>
 </body>
 </html>

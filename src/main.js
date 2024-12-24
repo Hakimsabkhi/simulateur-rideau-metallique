@@ -8,18 +8,12 @@ import { setupLoaders, loadModel } from './components/Loaders';
 import * as THREE from 'three';
 import GUI from 'lil-gui';
 
+// Canvas and Sizes
 const canvas = document.querySelector('canvas.webgl');
+const sizes = { width: window.innerWidth, height: window.innerHeight };
 
-// Sizes
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight,
-};
-
-// Scene
+// Scene and Environment
 const scene = createScene();
-
-// GUI
 const gui = new GUI();
 
 // Camera
@@ -31,30 +25,42 @@ const controls = setupControls(camera, canvas);
 
 // Renderer
 const renderer = setupRenderer(canvas, sizes, gui);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 // Lights
-setupLights(scene, gui);
+const light = setupLights(scene, gui);
 
-// Loaders and models
+// Loaders and Environment Map
 const { gltfLoader, rgbeLoader } = setupLoaders();
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
 
-// Load environment map
+
+// Load Environment Map
 rgbeLoader.load('/environmentMaps/0/2k.hdr', (environmentMap) => {
     environmentMap.mapping = THREE.EquirectangularReflectionMapping;
-    scene.background = environmentMap;
+    scene.background = new THREE.Color("#F4D8FF");
+    
     scene.environment = environmentMap;
 });
 
-// Load textures
-const textureLoader = new THREE.TextureLoader();
-const bakedTexture = textureLoader.load('/models/FlightHelmet/glTF/ground baked.jpg');
-const bakedMaterial = new THREE.MeshBasicMaterial({ map: bakedTexture });
 
-// Load the model
-loadModel(gltfLoader, scene, bakedMaterial);
 
-// Resize handler
-window.addEventListener('resize', () => {
+// Rotation State
+let isRotating = false;
+let rotatingObject = null;
+let mixer = null; // Animation Mixer for Models
+let isMixerPlaying = true; // State for controlling animation playback
+
+// Load Model
+loadModel(gltfLoader, scene, light).then(({ model, animationMixer }) => {
+    rotatingObject = model;
+    mixer = animationMixer;
+});
+
+// Resize Event Listener
+const handleResize = () => {
     sizes.width = window.innerWidth;
     sizes.height = window.innerHeight;
 
@@ -63,13 +69,65 @@ window.addEventListener('resize', () => {
 
     renderer.setSize(sizes.width, sizes.height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+};
+window.addEventListener('resize', handleResize);
+
+// Camera and Rotation Controls
+const cameraPositionElement = document.getElementById('camera-position');
+const cameraTargetElement = document.getElementById('camera-target');
+const rotateButton = document.getElementById('rotate-button');
+
+// Toggle Rotation
+rotateButton.addEventListener('click', () => {
+    isRotating = !isRotating;
+    rotateButton.textContent = isRotating ? 'Stop Rotation' : 'Start Rotation';
 });
 
-// Animation loop
+// Animation Mixer Control
+const animationButton = document.getElementById('animation-button');
+animationButton.addEventListener('click', () => {
+    if (mixer) {
+        isMixerPlaying = !isMixerPlaying;
+        animationButton.textContent = isMixerPlaying ? 'Stop Animation' : 'Start Animation';
+
+        if (isMixerPlaying) {
+            mixer.timeScale = 1; // Resume animation
+        } else {
+            mixer.timeScale = 0; // Pause animation
+        }
+    }
+});
+
+// Animation Loop
+const clock = new THREE.Clock();
 const tick = () => {
+    const deltaTime = clock.getDelta();
+
+    // Update animations if playing
+    if (mixer && isMixerPlaying) {
+        mixer.update(deltaTime);
+    }
+
+    // Rotate the model if enabled
+    if (isRotating && rotatingObject) {
+        rotatingObject.rotation.y += 0.01; // Adjust rotation speed
+    }
+
+    // Update controls
     controls.update();
+
+    // Render the scene
     renderer.render(scene, camera);
+
+    // Update camera position and target information
+    const cameraPosition = camera.position;
+    const targetPosition = controls.target;
+    cameraPositionElement.textContent = `x: ${cameraPosition.x.toFixed(2)}, y: ${cameraPosition.y.toFixed(2)}, z: ${cameraPosition.z.toFixed(2)}`;
+    cameraTargetElement.textContent = `x: ${targetPosition.x.toFixed(2)}, y: ${targetPosition.y.toFixed(2)}, z: ${targetPosition.z.toFixed(2)}`;
+
+    // Request the next frame
     requestAnimationFrame(tick);
 };
 
+// Start the animation loop
 tick();
